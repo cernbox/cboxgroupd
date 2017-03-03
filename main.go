@@ -14,6 +14,16 @@ import (
 	"os"
 )
 
+// Build information obtained with the help of -ldflags
+var (
+	appName       string
+	buildDate     string // date -u
+	gitTag        string // git describe --exact-match HEAD
+	gitNearestTag string // git describe --abbrev=0 --tags HEAD
+	gitCommit     string // git rev-parse HEAD
+)
+
+var fVersion bool
 var fPort int
 var fLDAPHostname string
 var fLDAPPort int
@@ -26,6 +36,7 @@ var fHTTPLog string
 var fSecret string
 
 func init() {
+	flag.BoolVar(&fVersion, "version", false, "Show version")
 	flag.IntVar(&fPort, "port", 2002, "Port to listen for connections")
 	flag.StringVar(&fLDAPHostname, "ldaphostname", "xldap.cern.ch", "Hostname of the LDAP server")
 	flag.IntVar(&fLDAPPort, "ldapport", 389, "Port of LDAP server")
@@ -40,6 +51,11 @@ func init() {
 }
 
 func main() {
+
+	if fVersion {
+		showVersion()
+	}
+
 	config := zap.NewProductionConfig()
 	config.OutputPaths = []string{fAppLog}
 	logger, _ := config.Build()
@@ -78,4 +94,14 @@ func getHTTPLoggerOut(filename string) *os.File {
 		}
 		return fd
 	}
+}
+
+func showVersion() {
+	// if gitTag is not empty we are on release build
+	if gitTag != "" {
+		fmt.Printf("%s %s commit:%s release-build\n", appName, gitNearestTag, gitCommit)
+		os.Exit(0)
+	}
+	fmt.Printf("%s %s commit:%s dev-build\n", appName, gitNearestTag, gitCommit)
+	os.Exit(0)
 }
