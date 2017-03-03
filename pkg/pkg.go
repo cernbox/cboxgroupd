@@ -3,6 +3,7 @@ package pkg
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 type GroupLookerErrorCode string
@@ -31,5 +32,7 @@ func (sr GroupLookerError) Error() string {
 
 type GroupLooker interface {
 	GetUsersInGroup(ctx context.Context, gid string) ([]string, error)
+	GetTTLForGroup(ctx context.Context, gid string) (time.Duration, error)
 	GetUserGroups(ctx context.Context, uid string) ([]string, error)
+	GetTTLForUser(ctx context.Context, uid string) (time.Duration, error)
 }

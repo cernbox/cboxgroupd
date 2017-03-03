@@ -6,6 +6,7 @@ import (
 	"github.com/cernbox/cboxgroupd/pkg"
 	"gopkg.in/ldap.v2"
 	"strings"
+	"time"
 )
 
 func New(hostname string, port int) pkg.GroupLooker {
@@ -20,8 +21,8 @@ type groupLooker struct {
 	port     int
 }
 
-func (ul *groupLooker) GetUsersInGroup(ctx context.Context, gid string) ([]string, error) {
-	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", ul.hostname, ul.port))
+func (gl *groupLooker) GetUsersInGroup(ctx context.Context, gid string) ([]string, error) {
+	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", gl.hostname, gl.port))
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +61,12 @@ func (ul *groupLooker) GetUsersInGroup(ctx context.Context, gid string) ([]strin
 	return uids, nil
 }
 
-func (ul *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string, error) {
-	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", ul.hostname, ul.port))
+func (gl *groupLooker) GetTTLForGroup(ctx context.Context, gid string) (time.Duration, error) {
+	return time.Duration(-1), nil
+}
+
+func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string, error) {
+	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", gl.hostname, gl.port))
 	if err != nil {
 		return nil, err
 	}
@@ -106,4 +111,8 @@ func (ul *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string,
 		return nil, pkg.NewGroupLookerError(pkg.GroupLookerErrorNotFound).WithMessage(uid)
 	}
 	return gids, nil
+}
+
+func (gl *groupLooker) GetTTLForUser(ctx context.Context, uid string) (time.Duration, error) {
+	return time.Duration(-1), nil
 }
