@@ -65,9 +65,36 @@ func (gl *groupLooker) GetUsersInGroup(ctx context.Context, gid string) ([]strin
 	return uids, nil
 }
 
-func (gl *groupLooker) GetTTLForGroup(ctx context.Context, gid string) (time.Duration, error) {
-	key := fmt.Sprintf("egroup:%s", gid)
-	return gl.client.TTL(key).Result()
+func (gl *groupLooker) GetUsersInComputingGroup(ctx context.Context, gid string) ([]string, error) {
+	key := fmt.Sprintf("unixgroup:%s", gid)
+
+	// check if it is cached
+	if gl.client.Exists(key).Val() == true {
+		cmd := gl.client.SMembers(key)
+		if cmd.Err() == nil {
+			uids, err := cmd.Result()
+			if err == nil {
+				return uids, nil
+			}
+		}
+	}
+
+	uids, err := gl.wrapped.GetUsersInComputingGroup(ctx, gid)
+	if err != nil {
+		return nil, err
+	}
+
+	pipeline := gl.client.TxPipeline()
+	defer pipeline.Close()
+	for _, uid := range uids {
+		pipeline.SAdd(key, uid)
+	}
+	pipeline.Expire(key, time.Second*time.Duration(gl.ttl))
+	_, err = pipeline.Exec()
+	if err != nil {
+		return nil, err
+	}
+	return uids, nil
 }
 
 func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string, error) {
@@ -102,7 +129,54 @@ func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string,
 	return gids, nil
 }
 
+func (gl *groupLooker) GetUserComputingGroups(ctx context.Context, uid string) ([]string, error) {
+	key := fmt.Sprintf("unixuser:%s", uid)
+
+	// check if it is cached
+	if gl.client.Exists(key).Val() == true {
+		cmd := gl.client.SMembers(key)
+		if cmd.Err() == nil {
+			gids, err := cmd.Result()
+			if err == nil {
+				return gids, nil
+			}
+		}
+	}
+
+	gids, err := gl.wrapped.GetUserComputingGroups(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	pipeline := gl.client.TxPipeline()
+	defer pipeline.Close()
+	for _, gid := range gids {
+		pipeline.SAdd(key, gid)
+	}
+	pipeline.Expire(key, time.Second*time.Duration(gl.ttl))
+	_, err = pipeline.Exec()
+	if err != nil {
+		return nil, err
+	}
+	return gids, nil
+}
+
 func (gl *groupLooker) GetTTLForUser(ctx context.Context, uid string) (time.Duration, error) {
 	key := fmt.Sprintf("u:%s", uid)
+	return gl.client.TTL(key).Result()
+}
+
+func (gl *groupLooker) GetTTLForGroup(ctx context.Context, gid string) (time.Duration, error) {
+	key := fmt.Sprintf("egroup:%s", gid)
+	return gl.client.TTL(key).Result()
+}
+
+func (gl *groupLooker) GetTTLForComputingGroup(ctx context.Context, gid string) (time.Duration, error) {
+	key := fmt.Sprintf("unixgroup:%s", gid)
+	return gl.client.TTL(key).Result()
+}
+
+func (gl *groupLooker) GetTTLForComputingUser(ctx context.Context, gid string) (time.Duration, error) {
+	key := fmt.Sprintf("unixuser:%s", gid)
 	return gl.client.TTL(key).Result()
 }

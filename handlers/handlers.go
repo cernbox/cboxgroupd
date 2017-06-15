@@ -50,7 +50,7 @@ func UsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler 
 	})
 }
 
-func UsersInGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UsersInComputingGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gid := mux.Vars(r)["gid"]
 		if gid == "" {
@@ -59,19 +59,21 @@ func UsersInGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handl
 			return
 		}
 
-		ttl, err := groupLooker.GetTTLForGroup(r.Context(), gid)
+		uids, err := groupLooker.GetUsersInComputingGroup(r.Context(), gid)
 		if err != nil {
-			logger.Info("error getting ttl for group", zap.Error(err), zap.String("gid", gid))
+			if gle, ok := err.(pkg.GroupLookerError); ok {
+				if gle.Code == pkg.GroupLookerErrorNotFound {
+					logger.Warn("computing group not found", zap.String("gid", gid))
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+			}
+			logger.Info("error getting users", zap.Error(err), zap.String("gid", gid))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
-		res := struct {
-			GID string  `json:"gid"`
-			TTL float64 `json:"ttl"`
-		}{gid, ttl.Seconds()}
-		logger.Info("ttl retrieved", zap.String("gid", gid), zap.Float64("ttl", res.TTL))
-		json.NewEncoder(w).Encode(res)
+		logger.Info("users found", zap.Int("numusers", len(uids)), zap.String("gid", gid))
+		json.NewEncoder(w).Encode(uids)
 	})
 }
 
@@ -84,6 +86,32 @@ func UserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 			return
 		}
 		gids, err := groupLooker.GetUserGroups(r.Context(), uid)
+		if err != nil {
+			if gle, ok := err.(pkg.GroupLookerError); ok {
+				if gle.Code == pkg.GroupLookerErrorNotFound {
+					logger.Warn("user not found", zap.String("uid", uid))
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+			}
+			logger.Info("error getting users", zap.Error(err), zap.String("uid", uid))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		logger.Info("groups found", zap.Int("numgroups", len(gids)), zap.String("uid", uid))
+		json.NewEncoder(w).Encode(gids)
+	})
+}
+
+func UserComputingGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uid := mux.Vars(r)["uid"]
+		if uid == "" {
+			logger.Error("uid is empty")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		gids, err := groupLooker.GetUserComputingGroups(r.Context(), uid)
 		if err != nil {
 			if gle, ok := err.(pkg.GroupLookerError); ok {
 				if gle.Code == pkg.GroupLookerErrorNotFound {
@@ -122,6 +150,81 @@ func UserGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler
 			TTL float64 `json:"ttl"`
 		}{uid, ttl.Seconds()}
 		logger.Info("ttl retrieved", zap.String("uid", uid), zap.Float64("ttl", res.TTL))
+		json.NewEncoder(w).Encode(res)
+	})
+}
+
+func UserComputingGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uid := mux.Vars(r)["uid"]
+		if uid == "" {
+			logger.Error("uid is empty")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		ttl, err := groupLooker.GetTTLForComputingUser(r.Context(), uid)
+		if err != nil {
+			logger.Info("error getting ttl for computing user", zap.Error(err), zap.String("uid", uid))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		res := struct {
+			UID string  `json:"uid"`
+			TTL float64 `json:"ttl"`
+		}{uid, ttl.Seconds()}
+		logger.Info("ttl retrieved", zap.String("uid", uid), zap.Float64("ttl", res.TTL))
+		json.NewEncoder(w).Encode(res)
+	})
+}
+
+func UsersInGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gid := mux.Vars(r)["gid"]
+		if gid == "" {
+			logger.Error("gid is empty")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		ttl, err := groupLooker.GetTTLForGroup(r.Context(), gid)
+		if err != nil {
+			logger.Info("error getting ttl for group", zap.Error(err), zap.String("gid", gid))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		res := struct {
+			GID string  `json:"gid"`
+			TTL float64 `json:"ttl"`
+		}{gid, ttl.Seconds()}
+		logger.Info("ttl retrieved", zap.String("gid", gid), zap.Float64("ttl", res.TTL))
+		json.NewEncoder(w).Encode(res)
+	})
+}
+
+func UsersInComputingGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gid := mux.Vars(r)["gid"]
+		if gid == "" {
+			logger.Error("gid is empty")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		ttl, err := groupLooker.GetTTLForComputingGroup(r.Context(), gid)
+		if err != nil {
+			logger.Info("error getting ttl for computing group", zap.Error(err), zap.String("gid", gid))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		res := struct {
+			GID string  `json:"gid"`
+			TTL float64 `json:"ttl"`
+		}{gid, ttl.Seconds()}
+		logger.Info("ttl retrieved", zap.String("gid", gid), zap.Float64("ttl", res.TTL))
 		json.NewEncoder(w).Encode(res)
 	})
 }

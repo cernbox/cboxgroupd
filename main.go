@@ -27,6 +27,7 @@ var fVersion bool
 var fPort int
 var fLDAPHostname string
 var fLDAPPort int
+var fLDAPPageLimit uint
 var fRedisHostname string
 var fRedisPort int
 var fRedisDatabase int
@@ -40,6 +41,7 @@ func init() {
 	flag.IntVar(&fPort, "port", 2002, "Port to listen for connections")
 	flag.StringVar(&fLDAPHostname, "ldaphostname", "xldap.cern.ch", "Hostname of the LDAP server")
 	flag.IntVar(&fLDAPPort, "ldapport", 389, "Port of LDAP server")
+	flag.UintVar(&fLDAPPageLimit, "ldappagelimit", 1000, "Page limit for paged searchs")
 	flag.StringVar(&fRedisHostname, "redishostname", "localhost", "Hostname of the Redis server")
 	flag.IntVar(&fRedisPort, "redisport", 6379, "Port of Redis server")
 	flag.IntVar(&fRedisDatabase, "redisdb", 0, "Redis number database for keys isolation (0-15)")
@@ -60,20 +62,29 @@ func main() {
 	config.OutputPaths = []string{fAppLog}
 	logger, _ := config.Build()
 
-	lgl := ldapgrouplooker.New(fLDAPHostname, fLDAPPort)
+	lgl := ldapgrouplooker.New(fLDAPHostname, fLDAPPort, uint32(fLDAPPageLimit))
 	rgl := redisgrouplooker.New(fRedisHostname, fRedisPort, fRedisDatabase, fRedisTTL, lgl)
 
 	router := mux.NewRouter()
 
 	protectedUsersInGroup := handlers.CheckSharedSecret(logger, fSecret, handlers.UsersInGroup(logger, rgl))
-	protectedUsersInGroupTTL := handlers.CheckSharedSecret(logger, fSecret, handlers.UsersInGroupTTL(logger, rgl))
+	protectedUsersInComputingGroup := handlers.CheckSharedSecret(logger, fSecret, handlers.UsersInComputingGroup(logger, rgl))
 	protectedUserGroups := handlers.CheckSharedSecret(logger, fSecret, handlers.UserGroups(logger, rgl))
+	protectedUserComputingGroups := handlers.CheckSharedSecret(logger, fSecret, handlers.UserComputingGroups(logger, rgl))
+	protectedUsersInGroupTTL := handlers.CheckSharedSecret(logger, fSecret, handlers.UsersInGroupTTL(logger, rgl))
+	protectedUsersInComputingGroupTTL := handlers.CheckSharedSecret(logger, fSecret, handlers.UsersInComputingGroupTTL(logger, rgl))
 	protectedUserGroupsTTL := handlers.CheckSharedSecret(logger, fSecret, handlers.UserGroupsTTL(logger, rgl))
+	protectedUserComputingGroupsTTL := handlers.CheckSharedSecret(logger, fSecret, handlers.UserComputingGroupsTTL(logger, rgl))
 
 	router.Handle("/api/v1/membership/usersingroup/{gid}", protectedUsersInGroup).Methods("GET")
-	router.Handle("/api/v1/membership/usersingroupttl/{gid}", protectedUsersInGroupTTL).Methods("GET")
+	router.Handle("/api/v1/membership/usersincomputinggroup/{gid}", protectedUsersInComputingGroup).Methods("GET")
 	router.Handle("/api/v1/membership/usergroups/{uid}", protectedUserGroups).Methods("GET")
+	router.Handle("/api/v1/membership/usercomputinggroups/{uid}", protectedUserComputingGroups).Methods("GET")
+
+	router.Handle("/api/v1/membership/usersingroupttl/{gid}", protectedUsersInGroupTTL).Methods("GET")
+	router.Handle("/api/v1/membership/usersincomputinggroupttl/{gid}", protectedUsersInComputingGroupTTL).Methods("GET")
 	router.Handle("/api/v1/membership/usergroupsttl/{uid}", protectedUserGroupsTTL).Methods("GET")
+	router.Handle("/api/v1/membership/usercomputinggroupsttl/{uid}", protectedUserComputingGroupsTTL).Methods("GET")
 
 	out := getHTTPLoggerOut(fHTTPLog)
 	loggedRouter := gh.LoggingHandler(out, router)
