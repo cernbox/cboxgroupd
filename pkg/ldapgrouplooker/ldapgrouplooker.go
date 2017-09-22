@@ -67,10 +67,10 @@ func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string,
 	defer l.Close()
 
 	searchRequest := ldap.NewSearchRequest(
-		"OU=Users,OU=Organic Units,DC=cern,DC=ch",
+		"OU=e-groups,OU=Workgroups,DC=cern,DC=ch",
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		fmt.Sprintf("(cn=%s)", uid),
-		[]string{"dn", "memberOf"},
+		fmt.Sprintf("(member:1.2.840.113556.1.4.1941:=CN=%s,OU=Users,OU=Organic Units,DC=cern,DC=ch)", uid),
+		[]string{"dn", "sAMAccountName"},
 		nil,
 	)
 
@@ -82,18 +82,10 @@ func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string,
 	var gids []string
 	for _, entry := range sr.Entries {
 		for _, attr := range entry.Attributes {
-			if attr.Name == "memberOf" {
-				for _, v := range attr.Values {
-					// v is in form CN=cern-fellows,OU=e-groups,OU=Workgroups,DC=cern,DC=ch
-					// check that we only include e-groups in the response
-					tokens := strings.Split(v, ",")
-					if len(tokens) == 5 {
-						if tokens[1] == "OU=e-groups" {
-							cnTokens := strings.Split(tokens[0], "=")
-							if len(cnTokens) == 2 && cnTokens[0] == "CN" && cnTokens[1] != "" {
-								gids = append(gids, cnTokens[1])
-							}
-						}
+			if attr.Name == "sAMAccountName" {
+				if len(attr.Values) > 0 {
+					if attr.Values[0] != "" {
+						gids = append(gids, attr.Values[0])
 					}
 				}
 			}
