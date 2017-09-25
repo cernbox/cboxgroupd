@@ -31,10 +31,10 @@ func (sr GroupLookerError) Error() string {
 }
 
 type GroupLooker interface {
-	GetUsersInGroup(ctx context.Context, gid string) ([]string, error)
-	GetUserGroups(ctx context.Context, uid string) ([]string, error)
-	GetUsersInComputingGroup(ctx context.Context, gid string) ([]string, error)
-	GetUserComputingGroups(ctx context.Context, gid string) ([]string, error)
+	GetUsersInGroup(ctx context.Context, gid string, cached bool) ([]string, error)
+	GetUserGroups(ctx context.Context, uid string, cached bool) ([]string, error)
+	GetUsersInComputingGroup(ctx context.Context, gid string, cached bool) ([]string, error)
+	GetUserComputingGroups(ctx context.Context, gid string, cached bool) ([]string, error)
 	GetTTLForUser(ctx context.Context, uid string) (time.Duration, error)
 	GetTTLForGroup(ctx context.Context, gid string) (time.Duration, error)
 	GetTTLForComputingUser(ctx context.Context, uid string) (time.Duration, error)

@@ -76,6 +76,9 @@ func main() {
 	protectedUserGroupsTTL := handlers.CheckSharedSecret(logger, fSecret, handlers.UserGroupsTTL(logger, rgl))
 	protectedUserComputingGroupsTTL := handlers.CheckSharedSecret(logger, fSecret, handlers.UserComputingGroupsTTL(logger, rgl))
 
+	protectedUpdateUsersInGroup := handlers.CheckSharedSecret(logger, fSecret, handlers.UpdateUsersInGroup(logger, rgl))
+	protectedUpdateUserGroups := handlers.CheckSharedSecret(logger, fSecret, handlers.UpdateUserGroups(logger, rgl))
+
 	router.Handle("/api/v1/membership/usersingroup/{gid}", protectedUsersInGroup).Methods("GET")
 	router.Handle("/api/v1/membership/usersincomputinggroup/{gid}", protectedUsersInComputingGroup).Methods("GET")
 	router.Handle("/api/v1/membership/usergroups/{uid}", protectedUserGroups).Methods("GET")
@@ -85,6 +88,9 @@ func main() {
 	router.Handle("/api/v1/membership/usersincomputinggroupttl/{gid}", protectedUsersInComputingGroupTTL).Methods("GET")
 	router.Handle("/api/v1/membership/usergroupsttl/{uid}", protectedUserGroupsTTL).Methods("GET")
 	router.Handle("/api/v1/membership/usercomputinggroupsttl/{uid}", protectedUserComputingGroupsTTL).Methods("GET")
+
+	router.Handle("/api/v1/update/usersingroup", protectedUpdateUsersInGroup).Methods("POST")
+	router.Handle("/api/v1/update/usergroups", protectedUpdateUserGroups).Methods("POST")
 
 	out := getHTTPLoggerOut(fHTTPLog)
 	loggedRouter := gh.LoggingHandler(out, router)

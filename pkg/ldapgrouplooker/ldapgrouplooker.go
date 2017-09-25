@@ -23,7 +23,7 @@ type groupLooker struct {
 	pageLimit uint32
 }
 
-func (gl *groupLooker) GetUsersInGroup(ctx context.Context, gid string) ([]string, error) {
+func (gl *groupLooker) GetUsersInGroup(ctx context.Context, gid string, cached bool) ([]string, error) {
 	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", gl.hostname, gl.port))
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func (gl *groupLooker) GetUsersInGroup(ctx context.Context, gid string) ([]strin
 	return uids, nil
 }
 
-func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string, error) {
+func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string, cached bool) ([]string, error) {
 	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", gl.hostname, gl.port))
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string,
 	return gids, nil
 }
 
-func (gl *groupLooker) GetUsersInComputingGroup(ctx context.Context, gid string) ([]string, error) {
+func (gl *groupLooker) GetUsersInComputingGroup(ctx context.Context, gid string, cached bool) ([]string, error) {
 	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", gl.hostname, gl.port))
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (gl *groupLooker) GetUsersInComputingGroup(ctx context.Context, gid string)
 	return uids, nil
 }
 
-func (gl *groupLooker) GetUserComputingGroups(ctx context.Context, uid string) ([]string, error) {
+func (gl *groupLooker) GetUserComputingGroups(ctx context.Context, uid string, cached bool) ([]string, error) {
 	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", gl.hostname, gl.port))
 	if err != nil {
 		return nil, err

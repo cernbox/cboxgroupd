@@ -33,21 +33,23 @@ type groupLooker struct {
 // GetUsersInGroups returns the uids (users) members of the given gid
 // In redis, the keys follow the pattern <uid>:<gid>, like hugo:cernbox-admins
 // To query for all groups of a given user we query redis for the prefix hugo:*
-func (gl *groupLooker) GetUsersInGroup(ctx context.Context, gid string) ([]string, error) {
+func (gl *groupLooker) GetUsersInGroup(ctx context.Context, gid string, cached bool) ([]string, error) {
 	key := fmt.Sprintf("egroup:%s", gid)
 
 	// check if it is cached
-	if gl.client.Exists(key).Val() == true {
-		cmd := gl.client.SMembers(key)
-		if cmd.Err() == nil {
-			uids, err := cmd.Result()
-			if err == nil {
-				return uids, nil
+	if cached {
+		if gl.client.Exists(key).Val() == true {
+			cmd := gl.client.SMembers(key)
+			if cmd.Err() == nil {
+				uids, err := cmd.Result()
+				if err == nil {
+					return uids, nil
+				}
 			}
 		}
 	}
 
-	uids, err := gl.wrapped.GetUsersInGroup(ctx, gid)
+	uids, err := gl.wrapped.GetUsersInGroup(ctx, gid, false)
 	if err != nil {
 		return nil, err
 	}
@@ -65,21 +67,23 @@ func (gl *groupLooker) GetUsersInGroup(ctx context.Context, gid string) ([]strin
 	return uids, nil
 }
 
-func (gl *groupLooker) GetUsersInComputingGroup(ctx context.Context, gid string) ([]string, error) {
+func (gl *groupLooker) GetUsersInComputingGroup(ctx context.Context, gid string, cached bool) ([]string, error) {
 	key := fmt.Sprintf("unixgroup:%s", gid)
 
 	// check if it is cached
-	if gl.client.Exists(key).Val() == true {
-		cmd := gl.client.SMembers(key)
-		if cmd.Err() == nil {
-			uids, err := cmd.Result()
-			if err == nil {
-				return uids, nil
+	if cached {
+		if gl.client.Exists(key).Val() == true {
+			cmd := gl.client.SMembers(key)
+			if cmd.Err() == nil {
+				uids, err := cmd.Result()
+				if err == nil {
+					return uids, nil
+				}
 			}
 		}
 	}
 
-	uids, err := gl.wrapped.GetUsersInComputingGroup(ctx, gid)
+	uids, err := gl.wrapped.GetUsersInComputingGroup(ctx, gid, false)
 	if err != nil {
 		return nil, err
 	}
@@ -97,21 +101,23 @@ func (gl *groupLooker) GetUsersInComputingGroup(ctx context.Context, gid string)
 	return uids, nil
 }
 
-func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string, error) {
+func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string, cached bool) ([]string, error) {
 	key := fmt.Sprintf("u:%s", uid)
 
 	// check if it is cached
-	if gl.client.Exists(key).Val() == true {
-		cmd := gl.client.SMembers(key)
-		if cmd.Err() == nil {
-			gids, err := cmd.Result()
-			if err == nil {
-				return gids, nil
+	if cached {
+		if gl.client.Exists(key).Val() == true {
+			cmd := gl.client.SMembers(key)
+			if cmd.Err() == nil {
+				gids, err := cmd.Result()
+				if err == nil {
+					return gids, nil
+				}
 			}
 		}
 	}
 
-	gids, err := gl.wrapped.GetUserGroups(ctx, uid)
+	gids, err := gl.wrapped.GetUserGroups(ctx, uid, false)
 	if err != nil {
 		return nil, err
 	}
@@ -129,21 +135,23 @@ func (gl *groupLooker) GetUserGroups(ctx context.Context, uid string) ([]string,
 	return gids, nil
 }
 
-func (gl *groupLooker) GetUserComputingGroups(ctx context.Context, uid string) ([]string, error) {
+func (gl *groupLooker) GetUserComputingGroups(ctx context.Context, uid string, cached bool) ([]string, error) {
 	key := fmt.Sprintf("unixuser:%s", uid)
 
 	// check if it is cached
-	if gl.client.Exists(key).Val() == true {
-		cmd := gl.client.SMembers(key)
-		if cmd.Err() == nil {
-			gids, err := cmd.Result()
-			if err == nil {
-				return gids, nil
+	if cached {
+		if gl.client.Exists(key).Val() == true {
+			cmd := gl.client.SMembers(key)
+			if cmd.Err() == nil {
+				gids, err := cmd.Result()
+				if err == nil {
+					return gids, nil
+				}
 			}
 		}
 	}
 
-	gids, err := gl.wrapped.GetUserComputingGroups(ctx, uid)
+	gids, err := gl.wrapped.GetUserComputingGroups(ctx, uid, false)
 	if err != nil {
 		return nil, err
 	}

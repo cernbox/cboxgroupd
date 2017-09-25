@@ -5,6 +5,7 @@ import (
 	"github.com/cernbox/cboxgroupd/pkg"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
+	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -32,7 +33,7 @@ func UsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler 
 			return
 		}
 
-		uids, err := groupLooker.GetUsersInGroup(r.Context(), gid)
+		uids, err := groupLooker.GetUsersInGroup(r.Context(), gid, true)
 		if err != nil {
 			if gle, ok := err.(pkg.GroupLookerError); ok {
 				if gle.Code == pkg.GroupLookerErrorNotFound {
@@ -59,7 +60,7 @@ func UsersInComputingGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http
 			return
 		}
 
-		uids, err := groupLooker.GetUsersInComputingGroup(r.Context(), gid)
+		uids, err := groupLooker.GetUsersInComputingGroup(r.Context(), gid, true)
 		if err != nil {
 			if gle, ok := err.(pkg.GroupLookerError); ok {
 				if gle.Code == pkg.GroupLookerErrorNotFound {
@@ -85,7 +86,7 @@ func UserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		gids, err := groupLooker.GetUserGroups(r.Context(), uid)
+		gids, err := groupLooker.GetUserGroups(r.Context(), uid, true)
 		if err != nil {
 			if gle, ok := err.(pkg.GroupLookerError); ok {
 				if gle.Code == pkg.GroupLookerErrorNotFound {
@@ -111,7 +112,7 @@ func UserComputingGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.H
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		gids, err := groupLooker.GetUserComputingGroups(r.Context(), uid)
+		gids, err := groupLooker.GetUserComputingGroups(r.Context(), uid, true)
 		if err != nil {
 			if gle, ok := err.(pkg.GroupLookerError); ok {
 				if gle.Code == pkg.GroupLookerErrorNotFound {
@@ -226,5 +227,80 @@ func UsersInComputingGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) h
 		}{gid, ttl.Seconds()}
 		logger.Info("ttl retrieved", zap.String("gid", gid), zap.Float64("ttl", res.TTL))
 		json.NewEncoder(w).Encode(res)
+	})
+}
+
+// UpdateUsersInGroups allows to trigger a refresh of users belonfing to a group
+func UpdateUsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		type request struct {
+			Groups []string `json:"groups"`
+		}
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		req := &request{}
+		err = json.Unmarshal(data, req)
+		if err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		for _, gid := range req.Groups {
+			uids, err := groupLooker.GetUsersInGroup(r.Context(), gid, false)
+			if err != nil {
+				if gle, ok := err.(pkg.GroupLookerError); ok {
+					if gle.Code == pkg.GroupLookerErrorNotFound {
+						logger.Warn("group not found", zap.String("gid", gid))
+						w.WriteHeader(http.StatusNotFound)
+						return
+					}
+				}
+				logger.Info("error getting users", zap.Error(err), zap.String("gid", gid))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			logger.Info("users found", zap.Int("numusers", len(uids)), zap.String("gid", gid))
+		}
+	})
+}
+
+// UpdateUserGroups allows to trigger a refresh of groups belonfing to an user
+func UpdateUserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		type request struct {
+			Users []string `json:"users"`
+		}
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		req := &request{}
+		err = json.Unmarshal(data, req)
+		if err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		for _, uid := range req.Users {
+			gids, err := groupLooker.GetUserGroups(r.Context(), uid, false)
+			if err != nil {
+				if gle, ok := err.(pkg.GroupLookerError); ok {
+					if gle.Code == pkg.GroupLookerErrorNotFound {
+						logger.Warn("user not found", zap.String("uid", uid))
+					}
+				}
+				logger.Info("error getting groups", zap.Error(err), zap.String("uid", uid))
+				return
+			}
+			logger.Info("groups found", zap.Int("numgroups", len(gids)), zap.String("uid", uid))
+		}
 	})
 }
