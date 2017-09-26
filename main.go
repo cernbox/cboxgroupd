@@ -35,6 +35,7 @@ var fRedisTTL int
 var fAppLog string
 var fHTTPLog string
 var fSecret string
+var fLDAPMaxConcurrency int
 
 func init() {
 	flag.BoolVar(&fVersion, "version", false, "Show version")
@@ -49,6 +50,7 @@ func init() {
 	flag.StringVar(&fAppLog, "applog", "stderr", "File to log application data")
 	flag.StringVar(&fHTTPLog, "httplog", "stderr", "File to log HTTP requests")
 	flag.StringVar(&fSecret, "secret", "changeme!!!", "Share secret between services to authenticate requests")
+	flag.IntVar(&fLDAPMaxConcurrency, "ldapmaxconcurrency", 100, "Number of concurrent connections to LDAP for update operations")
 	flag.Parse()
 }
 
@@ -76,8 +78,8 @@ func main() {
 	protectedUserGroupsTTL := handlers.CheckSharedSecret(logger, fSecret, handlers.UserGroupsTTL(logger, rgl))
 	protectedUserComputingGroupsTTL := handlers.CheckSharedSecret(logger, fSecret, handlers.UserComputingGroupsTTL(logger, rgl))
 
-	protectedUpdateUsersInGroup := handlers.CheckSharedSecret(logger, fSecret, handlers.UpdateUsersInGroup(logger, rgl))
-	protectedUpdateUserGroups := handlers.CheckSharedSecret(logger, fSecret, handlers.UpdateUserGroups(logger, rgl))
+	protectedUpdateUsersInGroup := handlers.CheckSharedSecret(logger, fSecret, handlers.UpdateUsersInGroup(logger, rgl, fLDAPMaxConcurrency))
+	protectedUpdateUserGroups := handlers.CheckSharedSecret(logger, fSecret, handlers.UpdateUserGroups(logger, rgl, fLDAPMaxConcurrency))
 
 	router.Handle("/api/v1/membership/usersingroup/{gid}", protectedUsersInGroup).Methods("GET")
 	router.Handle("/api/v1/membership/usersincomputinggroup/{gid}", protectedUsersInComputingGroup).Methods("GET")

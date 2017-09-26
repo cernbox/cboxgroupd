@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 func CheckSharedSecret(logger *zap.Logger, secret string, handler http.Handler) http.Handler {
@@ -231,7 +232,7 @@ func UsersInComputingGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) h
 }
 
 // UpdateUsersInGroups allows to trigger a refresh of users belonfing to a group
-func UpdateUsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UpdateUsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker, maxConcurrency int) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		type request struct {
 			Groups []string `json:"groups"`
@@ -250,27 +251,38 @@ func UpdateUsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Ha
 			return
 		}
 
-		for _, gid := range req.Groups {
-			uids, err := groupLooker.GetUsersInGroup(r.Context(), gid, false)
-			if err != nil {
-				if gle, ok := err.(pkg.GroupLookerError); ok {
-					if gle.Code == pkg.GroupLookerErrorNotFound {
-						logger.Warn("group not found", zap.String("gid", gid))
-						w.WriteHeader(http.StatusNotFound)
-						return
-					}
+		go func() {
+			var throttle = make(chan int, maxConcurrency)
+			var wg sync.WaitGroup
+			for _, gid := range req.Groups {
+				if gid != "" {
+					throttle <- 1
+					wg.Add(1)
+					go func(wg *sync.WaitGroup, throttle chan int, gid string) {
+						defer wg.Done()
+						defer func() { <-throttle }()
+						uids, err := groupLooker.GetUsersInGroup(r.Context(), gid, false)
+						if err != nil {
+							if gle, ok := err.(pkg.GroupLookerError); ok {
+								if gle.Code == pkg.GroupLookerErrorNotFound {
+									logger.Warn("async: group not found", zap.String("gid", gid))
+									return
+								}
+							}
+							logger.Info("async: error getting users", zap.Error(err), zap.String("gid", gid))
+						}
+						logger.Info("async: users found", zap.Int("numusers", len(uids)), zap.String("gid", gid))
+					}(&wg, throttle, gid)
 				}
-				logger.Info("error getting users", zap.Error(err), zap.String("gid", gid))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
 			}
-			logger.Info("users found", zap.Int("numusers", len(uids)), zap.String("gid", gid))
-		}
+			wg.Wait()
+		}()
+		w.WriteHeader(http.StatusAccepted)
 	})
 }
 
 // UpdateUserGroups allows to trigger a refresh of groups belonfing to an user
-func UpdateUserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UpdateUserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker, maxConcurrency int) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		type request struct {
 			Users []string `json:"users"`
@@ -289,18 +301,32 @@ func UpdateUserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Hand
 			return
 		}
 
-		for _, uid := range req.Users {
-			gids, err := groupLooker.GetUserGroups(r.Context(), uid, false)
-			if err != nil {
-				if gle, ok := err.(pkg.GroupLookerError); ok {
-					if gle.Code == pkg.GroupLookerErrorNotFound {
-						logger.Warn("user not found", zap.String("uid", uid))
-					}
+		go func() {
+			var throttle = make(chan int, maxConcurrency)
+			var wg sync.WaitGroup
+			for _, uid := range req.Users {
+				if uid != "" {
+					throttle <- 1
+					wg.Add(1)
+					go func(wg *sync.WaitGroup, throttle chan int, uid string) {
+						defer wg.Done()
+						defer func() { <-throttle }()
+						gids, err := groupLooker.GetUserGroups(r.Context(), uid, false)
+						if err != nil {
+							if gle, ok := err.(pkg.GroupLookerError); ok {
+								if gle.Code == pkg.GroupLookerErrorNotFound {
+									logger.Warn("async: user not found", zap.String("uid", uid))
+								}
+							}
+							logger.Info("async: error getting groups", zap.Error(err), zap.String("uid", uid))
+							return
+						}
+						logger.Info("async: groups found", zap.Int("numgroups", len(gids)), zap.String("uid", uid))
+					}(&wg, throttle, uid)
 				}
-				logger.Info("error getting groups", zap.Error(err), zap.String("uid", uid))
-				return
 			}
-			logger.Info("groups found", zap.Int("numgroups", len(gids)), zap.String("uid", uid))
-		}
+			wg.Wait()
+		}()
+		w.WriteHeader(http.StatusAccepted)
 	})
 }
