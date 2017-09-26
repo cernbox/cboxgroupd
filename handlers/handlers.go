@@ -126,7 +126,7 @@ func UserComputingGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.H
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		logger.Info("groups found", zap.Int("numgroups", len(gids)), zap.String("uid", uid))
+		logger.Info("unix groups found", zap.Int("numgroups", len(gids)), zap.String("uid", uid))
 		json.NewEncoder(w).Encode(gids)
 	})
 }

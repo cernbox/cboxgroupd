@@ -194,7 +194,7 @@ func (gl *groupLooker) GetUserComputingGroups(ctx context.Context, uid string, c
 
 	searchRequest := ldap.NewSearchRequest(
 		"OU=Users,OU=Organic Units,DC=cern,DC=ch",
-		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
 		fmt.Sprintf("(cn=%s)", uid),
 		[]string{"dn", "memberOf"},
 		nil,
@@ -214,7 +214,7 @@ func (gl *groupLooker) GetUserComputingGroups(ctx context.Context, uid string, c
 					// check that we only include e-groups in the response
 					tokens := strings.Split(v, ",")
 					if len(tokens) == 5 {
-						if tokens[1] == "OU=unix" {
+						if strings.ToLower(tokens[1]) == "ou=unix" {
 							cnTokens := strings.Split(tokens[0], "=")
 							if len(cnTokens) == 2 && cnTokens[0] == "CN" && cnTokens[1] != "" {
 								gids = append(gids, cnTokens[1])
