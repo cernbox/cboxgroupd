@@ -1,0 +1,22 @@
+/var/log/cboxgroupd/cboxgroupd_http.log
+{
+  compress
+  daily
+  missingok
+  rotate 200
+  postrotate
+    systemctl restart cboxgroupd
+  endscript
+}
+
+/var/log/cboxgroupd/cboxgroupd_app.log
+{
+  compress
+  daily
+  missingok
+  rotate 200
+  postrotate
+    systemctl restart cboxgroupd
+  endscript
+}
+
