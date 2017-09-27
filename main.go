@@ -57,6 +57,7 @@ func init() {
 	flag.String("httplog", "stderr", "File to log HTTP requests")
 	flag.String("secret", "changeme!!!", "Share secret between services to authenticate requests")
 	flag.Int("ldapmaxconcurrency", 100, "Number of concurrent connections to LDAP for update operations")
+	flag.String("config", "", "Configuration file to use")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -67,6 +68,10 @@ func main() {
 
 	if fVersion {
 		showVersion()
+	}
+
+	if viper.GetString("config") != "" {
+		viper.SetConfigFile(viper.GetString("config"))
 	}
 
 	err := viper.ReadInConfig()
