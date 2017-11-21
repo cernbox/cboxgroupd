@@ -1,22 +1,19 @@
-/var/log/cboxgroupd/cboxgroupd_http.log
-{
-  compress
-  daily
-  missingok
-  rotate 200
-  postrotate
-    systemctl restart cboxgroupd
-  endscript
+/var/log/cboxgroupd/cboxgroupd_http.log {
+    daily
+    rotate 365
+    copytruncate
+    delaycompress
+    compress
+    notifempty
+    missingok
 }
 
-/var/log/cboxgroupd/cboxgroupd_app.log
-{
-  compress
-  daily
-  missingok
-  rotate 200
-  postrotate
-    systemctl restart cboxgroupd
-  endscript
+/var/log/cboxgroupd/cboxgroupd_app.log {
+    daily
+    rotate 365
+    copytruncate
+    delaycompress
+    compress
+    notifempty
+    missingok
 }
-
