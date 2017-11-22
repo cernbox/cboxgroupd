@@ -6,6 +6,25 @@ import (
 	"time"
 )
 
+type LDAPAccountType string
+
+var (
+	LDAPAccountTypePrimary   LDAPAccountType = "primary"
+	LDAPAccountTypeSecondary LDAPAccountType = "secondary"
+	LDAPAccountTypeService   LDAPAccountType = "service"
+	LDAPAccountTypeEGroup    LDAPAccountType = "egroup"
+	LDAPAccountTypeUnixGroup LDAPAccountType = "unixgroup"
+	LDAPAccountTypeUndefined LDAPAccountType = "undefined"
+)
+
+type SearchEntry struct {
+	DN          string          `json:"dn"`
+	CN          string          `json:"cn"`
+	AccountType LDAPAccountType `json:"account_type"`
+	DisplayName string          `json:"display_name"`
+	Mail        string          `json:"mail"`
+}
+
 type GroupLookerErrorCode string
 
 const (
@@ -39,4 +58,5 @@ type GroupLooker interface {
 	GetTTLForGroup(ctx context.Context, gid string) (time.Duration, error)
 	GetTTLForComputingUser(ctx context.Context, uid string) (time.Duration, error)
 	GetTTLForComputingGroup(ctx context.Context, gid string) (time.Duration, error)
+	Search(ctx context.Context, filter string, cached bool) ([]*SearchEntry, error)
 }

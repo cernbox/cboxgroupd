@@ -25,6 +25,27 @@ func CheckSharedSecret(logger *zap.Logger, secret string, handler http.Handler) 
 	})
 }
 
+func Search(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		filter := mux.Vars(r)["filter"]
+		if filter == "" {
+			logger.Error("filter is empty")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		entries, err := groupLooker.Search(r.Context(), filter, true)
+		if err != nil {
+			logger.Info("error getting entries", zap.Error(err), zap.String("filter", filter))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		logger.Info("entries found", zap.Int("numentries", len(entries)), zap.String("filter", filter))
+		json.NewEncoder(w).Encode(entries)
+	})
+}
+
 func UsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gid := mux.Vars(r)["gid"]

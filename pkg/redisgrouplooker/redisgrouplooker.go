@@ -2,6 +2,7 @@ package redisgrouplooker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/cernbox/cboxgroupd/pkg"
 	"gopkg.in/redis.v5"
@@ -167,6 +168,46 @@ func (gl *groupLooker) GetUserComputingGroups(ctx context.Context, uid string, c
 		return nil, err
 	}
 	return gids, nil
+}
+
+func (gl *groupLooker) Search(ctx context.Context, filter string, cached bool) ([]*pkg.SearchEntry, error) {
+	key := fmt.Sprintf("filter:%s", filter)
+
+	// check if it is cached
+	if cached {
+		if gl.client.Exists(key).Val() == true {
+			cmd := gl.client.Get(key)
+			if cmd.Err() == nil {
+				entries := []*pkg.SearchEntry{}
+				jsonEntries, err := cmd.Result()
+				if err != nil {
+					return nil, err
+				}
+				err = json.Unmarshal([]byte(jsonEntries), &entries)
+				if err != nil {
+					return nil, err
+				}
+				return entries, nil
+			}
+		}
+	}
+
+	entries, err := gl.wrapped.Search(ctx, filter, false)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonEntries, err := json.Marshal(entries)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := gl.client.Set(key, jsonEntries, time.Second*time.Duration(gl.ttl))
+	err = cmd.Err()
+	if err != nil {
+		return nil, err
+	}
+	return entries, nil
 }
 
 func (gl *groupLooker) GetTTLForUser(ctx context.Context, uid string) (time.Duration, error) {

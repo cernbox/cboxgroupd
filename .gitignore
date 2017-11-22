@@ -23,6 +23,7 @@ _testmain.go
 *.test
 *.prof
 
-cboxgroupd
+cboxgroupd*
 nohup.out
 releases
+rpmbuild

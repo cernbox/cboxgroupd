@@ -100,6 +100,8 @@ func main() {
 	protectedUpdateUsersInGroup := handlers.CheckSharedSecret(logger, viper.GetString("secret"), handlers.UpdateUsersInGroup(logger, rgl, viper.GetInt("ldapmaxconcurrency")))
 	protectedUpdateUserGroups := handlers.CheckSharedSecret(logger, viper.GetString("secret"), handlers.UpdateUserGroups(logger, rgl, viper.GetInt("ldapmaxconcurrency")))
 
+	protectedSearch := handlers.CheckSharedSecret(logger, viper.GetString("secret"), handlers.Search(logger, rgl))
+
 	router.Handle("/api/v1/membership/usersingroup/{gid}", protectedUsersInGroup).Methods("GET")
 	router.Handle("/api/v1/membership/usersincomputinggroup/{gid}", protectedUsersInComputingGroup).Methods("GET")
 	router.Handle("/api/v1/membership/usergroups/{uid}", protectedUserGroups).Methods("GET")
@@ -112,6 +114,8 @@ func main() {
 
 	router.Handle("/api/v1/update/usersingroup", protectedUpdateUsersInGroup).Methods("POST")
 	router.Handle("/api/v1/update/usergroups", protectedUpdateUserGroups).Methods("POST")
+
+	router.Handle("/api/v1/search/{filter}", protectedSearch).Methods("GET")
 
 	out := getHTTPLoggerOut(viper.GetString("httplog"))
 	loggedRouter := gh.LoggingHandler(out, router)
