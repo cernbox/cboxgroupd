@@ -58,5 +58,11 @@ curl -i localhost:2002/api/v1/membership/usersincomputinggroup/zp -H "Authorizat
 
 curl -i localhost:2002/api/v1/membership/usergroups/gonzalhu -H "Authorization: Bearer abc"
 
+curl -i localhost:2002/api/v1/search/hugo -H "Authorization: Bearer abc" (searchs for primary users, egroups and unix groups)
+
+curl -i localhost:2002/api/v1/search/a:labrador -H "Authorization: Bearer abc" (searchs for all users accounts, egroups and unix groups)
+
+curl -i localhost:2002/api/v1/search/g:def-cg -H "Authorization: Bearer abc" (search for unix groups)
+
 ```
 
