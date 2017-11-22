@@ -4,7 +4,7 @@
 
 Name: cboxgroupd
 Summary: A server that allows the resolution of e-groups belonging to an user and viceversa.
-Version: 1.3.1
+Version: 1.4.0
 Release: 1%{?dist}
 License: AGPLv3
 BuildRoot: %{_tmppath}/%{name}-buildroot
@@ -53,8 +53,10 @@ rm -rf %buildroot/
 
 
 %changelog
-* Thu Nov 27 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.3.1
-- Add --config flag to use custom configuration file
 * Thu Nov 27 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.3.0
 - RPMization of the sofware
+* Thu Nov 27 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.3.1
+- Add --config flag to use custom configuration file
+* Wed Nov 22 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.4.0
+- New endpoint to perform searchs (/api/v1/search/{filter})
 
