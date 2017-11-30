@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-var searchTermRegexp = regexp.MustCompile(`^[a-zA-Z0-9_.-]*$`)
+var searchTermRegexp = regexp.MustCompile(`^[a-zA-Z0-9_.-:\s]*$`)
 
 func CheckSharedSecret(logger *zap.Logger, secret string, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
