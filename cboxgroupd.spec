@@ -55,6 +55,8 @@ rm -rf %buildroot/
 %config(noreplace) /etc/cboxgroupd/cboxgroupd.yaml
 
 %changelog
+* Thu Nov 30 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.4.2
+- Add space and colon to regexp
 * Thu Nov 30 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.4.1
 - Check ldap search term for valid characters
 * Wed Nov 28 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.4.0
