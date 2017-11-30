@@ -6,7 +6,7 @@ build:cc7:
   image: gitlab-registry.cern.ch/linuxsupport/cc7-base
   script:
     - yum install --nogpg -y rpm-build which git go sssd-client sudo createrepo
-    - mkdir /go/{src,bin,pkg}
+    - mkdir -p /go/{src,bin,pkg}
     - export GOPATH=/go
     - export PATH=$PATH:$GOPATH/bin
     - curl https://glide.sh/get | sh
