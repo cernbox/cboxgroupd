@@ -1,10 +1,12 @@
+%define version _VERSION_
+
 # 
 # cboxgroupd spec file
 #
 
 Name: cboxgroupd
 Summary: A server that allows the resolution of e-groups belonging to an user and viceversa.
-Version: 1.4.1
+Version: %{version}
 Release: 1%{?dist}
 License: AGPLv3
 BuildRoot: %{_tmppath}/%{name}-buildroot
@@ -50,7 +52,7 @@ rm -rf %buildroot/
 /var/log/cboxgroupd
 /usr/lib/systemd/system/cboxgroupd.service
 /usr/local/bin/*
-
+%config(noreplace) /etc/cboxgroupd/cboxgroupd.yaml
 
 %changelog
 * Thu Nov 30 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.4.1

@@ -1,0 +1,23 @@
+stages:
+  - build:rpm
+
+build:cc7:
+  stage: build:rpm
+  image: gitlab-registry.cern.ch/linuxsupport/cc7-base
+  script:
+    - yum install --nogpg -y rpm-build which git go sssd-client sudo createrepo
+    - curl https://glide.sh/get | sh
+    - mkdir cc7_artifacts
+    - make
+    - mv *.rpm cc7_artifacts
+    - prefix=/eos/project/s/storage-ci/www/cernbox/tag/el-7/x86_64/
+    - sudo -u stci -H cp cc7_artifacts/*rpm ${prefix}
+    - sudo -u stci -H createrepo --update -q ${prefix};
+  tags:
+    - docker-fc25
+  only:
+    - master
+  artifacts:
+    expire_in: 1 day
+    paths:
+    - cc7_artifacts

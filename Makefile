@@ -1,7 +1,8 @@
 FILES_TO_RPM = cboxgroupd cboxgroupd.yaml cboxgroupd.service cboxgroupd.logrotate
 SPECFILE = $(shell find . -type f -name *.spec)
 PACKAGE  = $(shell awk '$$1 == "Name:"     { print $$2 }' $(SPECFILE) )
-VERSION  = $(shell awk '$$1 == "Version:"  { print $$2 }' $(SPECFILE) )
+#VERSION  = $(shell awk '$$1 == "Version:"  { print $$2 }' $(SPECFILE) )
+VERSION  = $(shell echo ${CI_COMMIT_TAG} | cut -dv -f2)
 RELEASE  = $(shell awk '$$1 == "Release:"  { print $$2 }' $(SPECFILE) )
 rpmbuild = ${shell pwd}/rpmbuild
 
@@ -24,6 +25,7 @@ dist: clean
 	tar cpfz ./$(PACKAGE)-$(VERSION).tar.gz $(PACKAGE)-$(VERSION)
 
 prepare: dist
+	@sed -i "s/_VERSION_/${VERSION}/g" $(SPECFILE)
 	@mkdir -p $(rpmbuild)/RPMS/x86_64
 	@mkdir -p $(rpmbuild)/SRPMS/
 	@mkdir -p $(rpmbuild)/SPECS/
@@ -34,8 +36,9 @@ prepare: dist
 
 srpm: prepare $(SPECFILE)
 	rpmbuild --nodeps -bs $(rpmdefines) $(SPECFILE)
-	#cp $(rpmbuild)/SRPMS/* .
+	cp $(rpmbuild)/SRPMS/* .
 
 rpm: srpm
 	rpmbuild --nodeps -bb $(rpmdefines) $(SPECFILE)
 	cp $(rpmbuild)/RPMS/x86_64/* .
+	@sed -i "s/${VERSION}/_VERSION_/g" $(SPECFILE)
