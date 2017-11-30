@@ -5,7 +5,7 @@ build:cc7:
   stage: build:rpm
   image: gitlab-registry.cern.ch/linuxsupport/cc7-base
   script:
-    - yum install --nogpg -y rpm-build which git go sssd-client sudo createrepo
+    - yum install --nogpg -y rpm-build which git go sssd-client sudo createrepo make
     - mkdir -p /go/{src,bin,pkg}
     - export GOPATH=/go
     - export PATH=$PATH:$GOPATH/bin
