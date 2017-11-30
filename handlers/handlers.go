@@ -7,9 +7,12 @@ import (
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 )
+
+var searchTermRegexp = regexp.MustCompile(`^[a-zA-Z0-9_.-]*$`)
 
 func CheckSharedSecret(logger *zap.Logger, secret string, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -25,12 +28,20 @@ func CheckSharedSecret(logger *zap.Logger, secret string, handler http.Handler) 
 	})
 }
 
+func isValidFilter(s string) bool {
+	if s == "" {
+		return false
+	}
+
+	return searchTermRegexp.MatchString(s)
+}
+
 func Search(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		filter := mux.Vars(r)["filter"]
-		if filter == "" {
-			logger.Error("filter is empty")
+		if !isValidFilter(filter) {
+			logger.Error("filter is invalid")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -49,7 +60,7 @@ func Search(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 func UsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gid := mux.Vars(r)["gid"]
-		if gid == "" {
+		if !isValidFilter(gid) {
 			logger.Error("gid is empty")
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -76,8 +87,8 @@ func UsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler 
 func UsersInComputingGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gid := mux.Vars(r)["gid"]
-		if gid == "" {
-			logger.Error("gid is empty")
+		if !isValidFilter(gid) {
+			logger.Error("gid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -103,11 +114,12 @@ func UsersInComputingGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http
 func UserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uid := mux.Vars(r)["uid"]
-		if uid == "" {
-			logger.Error("uid is empty")
+		if !isValidFilter(uid) {
+			logger.Error("uid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
 		gids, err := groupLooker.GetUserGroups(r.Context(), uid, true)
 		if err != nil {
 			if gle, ok := err.(pkg.GroupLookerError); ok {
@@ -129,11 +141,12 @@ func UserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 func UserComputingGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uid := mux.Vars(r)["uid"]
-		if uid == "" {
-			logger.Error("uid is empty")
+		if !isValidFilter(uid) {
+			logger.Error("uid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
 		gids, err := groupLooker.GetUserComputingGroups(r.Context(), uid, true)
 		if err != nil {
 			if gle, ok := err.(pkg.GroupLookerError); ok {
@@ -155,8 +168,8 @@ func UserComputingGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.H
 func UserGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uid := mux.Vars(r)["uid"]
-		if uid == "" {
-			logger.Error("uid is empty")
+		if !isValidFilter(uid) {
+			logger.Error("uid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -180,8 +193,8 @@ func UserGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler
 func UserComputingGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uid := mux.Vars(r)["uid"]
-		if uid == "" {
-			logger.Error("uid is empty")
+		if !isValidFilter(uid) {
+			logger.Error("uid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -205,8 +218,8 @@ func UserComputingGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) htt
 func UsersInGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gid := mux.Vars(r)["gid"]
-		if gid == "" {
-			logger.Error("gid is empty")
+		if !isValidFilter(gid) {
+			logger.Error("gid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -230,8 +243,8 @@ func UsersInGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handl
 func UsersInComputingGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gid := mux.Vars(r)["gid"]
-		if gid == "" {
-			logger.Error("gid is empty")
+		if !isValidFilter(gid) {
+			logger.Error("gid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
