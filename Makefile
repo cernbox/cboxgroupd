@@ -18,7 +18,7 @@ rpmdefines=--define='_topdir ${rpmbuild}' \
         --define='_rpmdir %{_topdir}/RPMS'
 
 dist: clean
-	go get ./...
+	glide install
 	go build 
 	@mkdir -p $(PACKAGE)-$(VERSION)
 	@cp -r $(FILES_TO_RPM) $(PACKAGE)-$(VERSION)
