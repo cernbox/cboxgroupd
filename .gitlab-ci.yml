@@ -11,7 +11,7 @@ build:cc7:
     - export PATH=$PATH:$GOPATH/bin
     - curl https://glide.sh/get | sh
     - mkdir cc7_artifacts
-    - make
+    - make rpm
     - mv *.rpm cc7_artifacts
     - prefix=/eos/project/s/storage-ci/www/cernbox/tag/el-7/x86_64/
     - sudo -u stci -H cp cc7_artifacts/*rpm ${prefix}
