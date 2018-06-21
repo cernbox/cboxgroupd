@@ -1,12 +1,10 @@
-%define version _VERSION_
-
 # 
 # cboxgroupd spec file
 #
 
 Name: cboxgroupd
 Summary: A server that allows the resolution of e-groups belonging to an user and viceversa.
-Version: %{version}
+Version: 1.4.9
 Release: 1%{?dist}
 License: AGPLv3
 BuildRoot: %{_tmppath}/%{name}-buildroot

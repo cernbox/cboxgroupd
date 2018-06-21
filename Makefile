@@ -1,8 +1,7 @@
 FILES_TO_RPM = cboxgroupd cboxgroupd.yaml cboxgroupd.service cboxgroupd.logrotate
 SPECFILE = $(shell find . -type f -name *.spec)
 PACKAGE  = $(shell awk '$$1 == "Name:"     { print $$2 }' $(SPECFILE) )
-#VERSION  = $(shell awk '$$1 == "Version:"  { print $$2 }' $(SPECFILE) )
-VERSION  = $(shell echo ${CI_COMMIT_TAG} | cut -dv -f2)
+VERSION  = $(shell awk '$$1 == "Version:"  { print $$2 }' $(SPECFILE) )
 RELEASE  = $(shell awk '$$1 == "Release:"  { print $$2 }' $(SPECFILE) )
 rpmbuild = ${shell pwd}/rpmbuild
 
