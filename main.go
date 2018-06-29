@@ -50,6 +50,7 @@ func init() {
 	flag.Int("ldapport", 389, "Port of LDAP server")
 	flag.Uint("ldappagelimit", 1000, "Page limit for paged searchs")
 	flag.String("redishostname", "localhost", "Hostname of the Redis server")
+	flag.String("redispassword", "foo", "Password for the Redis server")
 	flag.Int("redisport", 6379, "Port of Redis server")
 	flag.Int("redisdb", 0, "Redis number database for keys isolation (0-15)")
 	flag.Int("redisttl", 60, "Number of seconds to expire cached entries in Redis")
@@ -84,7 +85,7 @@ func main() {
 	logger, _ := config.Build()
 
 	lgl := ldapgrouplooker.New(viper.GetString("ldaphostname"), viper.GetInt("ldapport"), uint32(viper.GetInt("ldappagelimit")))
-	rgl := redisgrouplooker.New(viper.GetString("redishostname"), viper.GetInt("redisport"), viper.GetInt("redisdb"), viper.GetInt("redisttl"), lgl)
+	rgl := redisgrouplooker.New(viper.GetString("redishostname"), viper.GetInt("redisport"), viper.GetInt("redisdb"), viper.GetInt("redisttl"), viper.GetString("redispassword"), lgl)
 
 	router := mux.NewRouter()
 

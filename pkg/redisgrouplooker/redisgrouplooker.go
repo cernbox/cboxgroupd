@@ -13,10 +13,11 @@ import (
 // resglts for a given TTL.
 // If the query cannot be found in the cache, it will call the wrapped GroupLooker
 // for getting the resglts and it will cache the resglts for the configured TTL
-func New(hostname string, port, db, ttl int, wrapped pkg.GroupLooker) pkg.GroupLooker {
+func New(hostname string, port, db, ttl int, password string, wrapped pkg.GroupLooker) pkg.GroupLooker {
 	client := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%d", hostname, port),
-		DB:   db,
+		Addr:     fmt.Sprintf("%s:%d", hostname, port),
+		DB:       db,
+		Password: password,
 	})
 	return &groupLooker{
 		ttl:     ttl,
