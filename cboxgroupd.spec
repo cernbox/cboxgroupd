@@ -4,7 +4,7 @@
 
 Name: cboxgroupd
 Summary: A server that allows the resolution of e-groups belonging to an user and viceversa.
-Version: 1.4.9
+Version: 1.4.10
 Release: 1%{?dist}
 License: AGPLv3
 BuildRoot: %{_tmppath}/%{name}-buildroot
@@ -53,6 +53,7 @@ rm -rf %buildroot/
 %config(noreplace) /etc/cboxgroupd/cboxgroupd.yaml
 
 %changelog
+* Fri Sep 28 2018 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.4.10
 * Thu Nov 30 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.4.2
 - Add space and colon to regexp
 * Thu Nov 30 2017 Hugo Gonzalez Labrador <hugo.gonzalez.labrador@cern.ch> 1.4.1
