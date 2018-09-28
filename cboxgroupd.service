@@ -10,6 +10,7 @@ WorkingDirectory=/var/log/cboxgroupd
 ExecStart=/usr/local/bin/cboxgroupd
 StandardOutput=null
 StandardError=syslog
+LimitNOFILE=49152
 
 [Install]
 WantedBy=multi-user.target
