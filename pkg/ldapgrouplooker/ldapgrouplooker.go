@@ -4,25 +4,32 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/cernbox/cboxgroupd/pkg"
-	"gopkg.in/ldap.v2"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cernbox/cboxgroupd/pkg"
+	"gopkg.in/ldap.v2"
 )
 
-func New(hostname string, port int, pageLimit uint32) pkg.GroupLooker {
+func New(hostname string, port int, bindusername, bindpassword string, pageLimit uint32, baseSearch string) pkg.GroupLooker {
 	return &groupLooker{
-		hostname:  hostname,
-		port:      port,
-		pageLimit: pageLimit,
+		hostname:     hostname,
+		port:         port,
+		bindusername: bindusername,
+		bindpassword: bindpassword,
+		pageLimit:    pageLimit,
+		baseSearch:   baseSearch,
 	}
 }
 
 type groupLooker struct {
-	hostname  string
-	port      int
-	pageLimit uint32
+	hostname     string
+	port         int
+	bindusername string
+	bindpassword string
+	pageLimit    uint32
+	baseSearch   string
 }
 
 // GetUsersInGroup is an expensive query that can put the cluster down if there are a lot of concurrent connections.
@@ -236,120 +243,154 @@ func (gl *groupLooker) Search(ctx context.Context, filter string, cached bool) (
 	}
 	defer l.Close()
 
-	// filter can be prefixed with a: (primary, secondary, service, egroups, unixgroups), g: (unixgroups)
-	// if no filter is enabled only primary and egroups
-	var prefix string
-	filterParts := strings.Split(filter, ":")
-	if len(filterParts) > 1 {
-		if filterParts[0] == "a" || filterParts[0] == "g" {
-			prefix = filterParts[0]
-			filter = filterParts[1]
-		}
+	err = l.Bind(gl.bindusername, gl.bindpassword)
+	if err != nil {
+		return nil, err
 	}
 
 	searchEntries := []*pkg.SearchEntry{}
-	// include user accounts only when there is no prefix or prefix is a:
-	if prefix == "" || prefix == "a" {
-		searchFilter := fmt.Sprintf("(&(objectClass=user)(cernAccountType=primary)(|(displayname=*%s*)(samaccountname=*%s*)))", filter, filter)
-		if prefix == "a" {
-			searchFilter = fmt.Sprintf("(&(objectClass=user)(|(displayname=*%s*)(samaccountname=*%s*)))", filter, filter)
-		}
-		searchRequest := ldap.NewSearchRequest(
-			"OU=Users,OU=Organic Units,DC=cern,DC=ch",
-			ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
-			searchFilter,
-			[]string{"dn", "cn", "displayName", "mail", "cernAccountType"},
-			nil,
-		)
 
-		sr, err := l.SearchWithPaging(searchRequest, gl.pageLimit)
-		if err != nil {
-			return nil, err
-		}
+	searchRequest := ldap.NewSearchRequest(
+		gl.baseSearch,
+		ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
+		fmt.Sprintf("(&(objectClass=unixAccount)(uid=*%s*))", filter),
+		[]string{"cn"},
+		nil,
+	)
 
-		for _, entry := range sr.Entries {
-			searchEntry := &pkg.SearchEntry{DN: entry.DN}
-			for _, attr := range entry.Attributes {
-				if attr.Name == "displayName" {
-					searchEntry.DisplayName = attr.Values[0]
-				}
-				if attr.Name == "cernAccountType" {
-					searchEntry.AccountType = getLDAPAccountTypeForUser(attr.Values[0])
-				}
-				if attr.Name == "mail" {
-					searchEntry.Mail = attr.Values[0]
-				}
-				if attr.Name == "cn" {
-					searchEntry.CN = attr.Values[0]
-				}
-			}
-			searchEntries = append(searchEntries, searchEntry)
-		}
-
+	sr, err := l.SearchWithPaging(searchRequest, gl.pageLimit)
+	if err != nil {
+		return nil, err
 	}
 
-	if prefix == "" || prefix == "a" {
-		searchRequest := ldap.NewSearchRequest(
-			"OU=e-groups,OU=Workgroups,DC=cern,DC=ch",
-			ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
-			fmt.Sprintf("(&(objectClass=group)(objectClass=top)(cn=*%s*))", filter),
-			[]string{"dn", "cn", "displayName", "mail"},
-			nil,
-		)
-
-		sr, err := l.SearchWithPaging(searchRequest, gl.pageLimit)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, entry := range sr.Entries {
-			searchEntry := &pkg.SearchEntry{DN: entry.DN, AccountType: pkg.LDAPAccountTypeEGroup}
-			for _, attr := range entry.Attributes {
-				if attr.Name == "displayName" {
-					searchEntry.DisplayName = attr.Values[0]
-				}
-				if attr.Name == "mail" {
-					searchEntry.Mail = attr.Values[0]
-				}
-				if attr.Name == "cn" {
-					searchEntry.CN = attr.Values[0]
-				}
+	for _, entry := range sr.Entries {
+		searchEntry := &pkg.SearchEntry{DN: entry.DN, AccountType: pkg.LDAPAccountTypePrimary}
+		for _, attr := range entry.Attributes {
+			if attr.Name == "displayName" {
+				searchEntry.DisplayName = attr.Values[0]
 			}
-			searchEntries = append(searchEntries, searchEntry)
+			if attr.Name == "mail" {
+				searchEntry.Mail = attr.Values[0]
+			}
+			if attr.Name == "cn" {
+				searchEntry.CN = attr.Values[0]
+			}
 		}
-
+		searchEntries = append(searchEntries, searchEntry)
 	}
 
-	if prefix == "" || prefix == "a" || prefix == "g" {
-		searchRequest := ldap.NewSearchRequest(
-			"OU=unix,OU=Workgroups,DC=cern,DC=ch",
-			ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
-			fmt.Sprintf("(&(objectClass=group)(objectClass=top)(cn=*%s*))", filter),
-			[]string{"dn", "cn", "displayName", "mail"},
-			nil,
-		)
+	// // filter can be prefixed with a: (primary, secondary, service, egroups, unixgroups), g: (unixgroups)
+	// // if no filter is enabled only primary and egroups
+	// var prefix string
+	// filterParts := strings.Split(filter, ":")
+	// if len(filterParts) > 1 {
+	// 	if filterParts[0] == "a" || filterParts[0] == "g" {
+	// 		prefix = filterParts[0]
+	// 		filter = filterParts[1]
+	// 	}
+	// }
+	// // include user accounts only when there is no prefix or prefix is a:
+	// if prefix == "" || prefix == "a" {
+	// 	searchFilter := fmt.Sprintf("(&(objectClass=user)(cernAccountType=primary)(|(displayname=*%s*)(samaccountname=*%s*)))", filter, filter)
+	// 	if prefix == "a" {
+	// 		searchFilter = fmt.Sprintf("(&(objectClass=user)(|(displayname=*%s*)(samaccountname=*%s*)))", filter, filter)
+	// 	}
+	// 	searchRequest := ldap.NewSearchRequest(
+	// 		gl.baseSearch,
+	// 		ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
+	// 		searchFilter,
+	// 		[]string{"dn", "cn", "displayName", "mail", "cernAccountType"},
+	// 		nil,
+	// 	)
 
-		sr, err := l.SearchWithPaging(searchRequest, gl.pageLimit)
-		if err != nil {
-			return nil, err
-		}
-		for _, entry := range sr.Entries {
-			searchEntry := &pkg.SearchEntry{DN: entry.DN, AccountType: pkg.LDAPAccountTypeUnixGroup}
-			for _, attr := range entry.Attributes {
-				if attr.Name == "displayName" {
-					searchEntry.DisplayName = attr.Values[0]
-				}
-				if attr.Name == "mail" {
-					searchEntry.Mail = attr.Values[0]
-				}
-				if attr.Name == "cn" {
-					searchEntry.CN = attr.Values[0]
-				}
-			}
-			searchEntries = append(searchEntries, searchEntry)
-		}
+	// 	sr, err := l.SearchWithPaging(searchRequest, gl.pageLimit)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-	}
+	// 	for _, entry := range sr.Entries {
+	// 		searchEntry := &pkg.SearchEntry{DN: entry.DN}
+	// 		for _, attr := range entry.Attributes {
+	// 			if attr.Name == "displayName" {
+	// 				searchEntry.DisplayName = attr.Values[0]
+	// 			}
+	// 			if attr.Name == "cernAccountType" {
+	// 				searchEntry.AccountType = getLDAPAccountTypeForUser(attr.Values[0])
+	// 			}
+	// 			if attr.Name == "mail" {
+	// 				searchEntry.Mail = attr.Values[0]
+	// 			}
+	// 			if attr.Name == "cn" {
+	// 				searchEntry.CN = attr.Values[0]
+	// 			}
+	// 		}
+	// 		searchEntries = append(searchEntries, searchEntry)
+	// 	}
+
+	// }
+
+	// if prefix == "" || prefix == "a" {
+	// 	searchRequest := ldap.NewSearchRequest(
+	// 		"OU=e-groups,OU=Workgroups,DC=cern,DC=ch",
+	// 		ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
+	// 		fmt.Sprintf("(&(objectClass=group)(objectClass=top)(cn=*%s*))", filter),
+	// 		[]string{"dn", "cn", "displayName", "mail"},
+	// 		nil,
+	// 	)
+
+	// 	sr, err := l.SearchWithPaging(searchRequest, gl.pageLimit)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	for _, entry := range sr.Entries {
+	// 		searchEntry := &pkg.SearchEntry{DN: entry.DN, AccountType: pkg.LDAPAccountTypeEGroup}
+	// 		for _, attr := range entry.Attributes {
+	// 			if attr.Name == "displayName" {
+	// 				searchEntry.DisplayName = attr.Values[0]
+	// 			}
+	// 			if attr.Name == "mail" {
+	// 				searchEntry.Mail = attr.Values[0]
+	// 			}
+	// 			if attr.Name == "cn" {
+	// 				searchEntry.CN = attr.Values[0]
+	// 			}
+	// 		}
+	// 		searchEntries = append(searchEntries, searchEntry)
+	// 	}
+
+	// }
+
+	// if prefix == "" || prefix == "a" || prefix == "g" {
+	// 	searchRequest := ldap.NewSearchRequest(
+	// 		"OU=unix,OU=Workgroups,DC=cern,DC=ch",
+	// 		ldap.ScopeSingleLevel, ldap.NeverDerefAliases, 0, 0, false,
+	// 		fmt.Sprintf("(&(objectClass=group)(objectClass=top)(cn=*%s*))", filter),
+	// 		[]string{"dn", "cn", "displayName", "mail"},
+	// 		nil,
+	// 	)
+
+	// 	sr, err := l.SearchWithPaging(searchRequest, gl.pageLimit)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	for _, entry := range sr.Entries {
+	// 		searchEntry := &pkg.SearchEntry{DN: entry.DN, AccountType: pkg.LDAPAccountTypeUnixGroup}
+	// 		for _, attr := range entry.Attributes {
+	// 			if attr.Name == "displayName" {
+	// 				searchEntry.DisplayName = attr.Values[0]
+	// 			}
+	// 			if attr.Name == "mail" {
+	// 				searchEntry.Mail = attr.Values[0]
+	// 			}
+	// 			if attr.Name == "cn" {
+	// 				searchEntry.CN = attr.Values[0]
+	// 			}
+	// 		}
+	// 		searchEntries = append(searchEntries, searchEntry)
+	// 	}
+
+	// }
 	return searchEntries, nil
 }
 

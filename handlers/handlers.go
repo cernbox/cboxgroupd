@@ -2,14 +2,15 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/cernbox/cboxgroupd/pkg"
-	"github.com/gorilla/mux"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/cernbox/cboxgroupd/pkg"
+	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 var searchTermRegexp = regexp.MustCompile(`^[a-zA-Z0-9_.\-:\s]*$`)
@@ -57,8 +58,14 @@ func Search(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	})
 }
 
-func UsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if !groupSearch {
+			json.NewEncoder(w).Encode([]string{})
+			return
+		}
+
 		gid := mux.Vars(r)["gid"]
 		if !isValidFilter(gid) {
 			logger.Error("gid is empty")
@@ -84,8 +91,14 @@ func UsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler 
 	})
 }
 
-func UsersInComputingGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UsersInComputingGroup(logger *zap.Logger, groupLooker pkg.GroupLooker, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if !groupSearch {
+			json.NewEncoder(w).Encode([]string{})
+			return
+		}
+
 		gid := mux.Vars(r)["gid"]
 		if !isValidFilter(gid) {
 			logger.Error("gid is invalid")
@@ -111,8 +124,14 @@ func UsersInComputingGroup(logger *zap.Logger, groupLooker pkg.GroupLooker) http
 	})
 }
 
-func UserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if !groupSearch {
+			json.NewEncoder(w).Encode([]string{})
+			return
+		}
+
 		uid := mux.Vars(r)["uid"]
 		if !isValidFilter(uid) {
 			logger.Error("uid is invalid")
@@ -138,8 +157,14 @@ func UserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
 	})
 }
 
-func UserComputingGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UserComputingGroups(logger *zap.Logger, groupLooker pkg.GroupLooker, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if !groupSearch {
+			json.NewEncoder(w).Encode([]string{})
+			return
+		}
+
 		uid := mux.Vars(r)["uid"]
 		if !isValidFilter(uid) {
 			logger.Error("uid is invalid")
@@ -165,12 +190,24 @@ func UserComputingGroups(logger *zap.Logger, groupLooker pkg.GroupLooker) http.H
 	})
 }
 
-func UserGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UserGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		type returnType struct {
+			UID string  `json:"uid"`
+			TTL float64 `json:"ttl"`
+		}
+
 		uid := mux.Vars(r)["uid"]
 		if !isValidFilter(uid) {
 			logger.Error("uid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if !groupSearch {
+			res := returnType{uid, 60}
+			json.NewEncoder(w).Encode(res)
 			return
 		}
 
@@ -181,21 +218,30 @@ func UserGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler
 			return
 		}
 
-		res := struct {
-			UID string  `json:"uid"`
-			TTL float64 `json:"ttl"`
-		}{uid, ttl.Seconds()}
+		res := returnType{uid, ttl.Seconds()}
 		logger.Info("ttl retrieved", zap.String("uid", uid), zap.Float64("ttl", res.TTL))
 		json.NewEncoder(w).Encode(res)
 	})
 }
 
-func UserComputingGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UserComputingGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		type returnType struct {
+			UID string  `json:"uid"`
+			TTL float64 `json:"ttl"`
+		}
+
 		uid := mux.Vars(r)["uid"]
 		if !isValidFilter(uid) {
 			logger.Error("uid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if !groupSearch {
+			res := returnType{uid, 60}
+			json.NewEncoder(w).Encode(res)
 			return
 		}
 
@@ -206,21 +252,30 @@ func UserComputingGroupsTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) htt
 			return
 		}
 
-		res := struct {
-			UID string  `json:"uid"`
-			TTL float64 `json:"ttl"`
-		}{uid, ttl.Seconds()}
+		res := returnType{uid, ttl.Seconds()}
 		logger.Info("ttl retrieved", zap.String("uid", uid), zap.Float64("ttl", res.TTL))
 		json.NewEncoder(w).Encode(res)
 	})
 }
 
-func UsersInGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UsersInGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		type returnType struct {
+			GID string  `json:"gid"`
+			TTL float64 `json:"ttl"`
+		}
+
 		gid := mux.Vars(r)["gid"]
 		if !isValidFilter(gid) {
 			logger.Error("gid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if !groupSearch {
+			res := returnType{gid, 60}
+			json.NewEncoder(w).Encode(res)
 			return
 		}
 
@@ -231,21 +286,30 @@ func UsersInGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handl
 			return
 		}
 
-		res := struct {
-			GID string  `json:"gid"`
-			TTL float64 `json:"ttl"`
-		}{gid, ttl.Seconds()}
+		res := returnType{gid, ttl.Seconds()}
 		logger.Info("ttl retrieved", zap.String("gid", gid), zap.Float64("ttl", res.TTL))
 		json.NewEncoder(w).Encode(res)
 	})
 }
 
-func UsersInComputingGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) http.Handler {
+func UsersInComputingGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		type returnType struct {
+			GID string  `json:"gid"`
+			TTL float64 `json:"ttl"`
+		}
+
 		gid := mux.Vars(r)["gid"]
 		if !isValidFilter(gid) {
 			logger.Error("gid is invalid")
 			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if !groupSearch {
+			res := returnType{gid, 60}
+			json.NewEncoder(w).Encode(res)
 			return
 		}
 
@@ -256,18 +320,21 @@ func UsersInComputingGroupTTL(logger *zap.Logger, groupLooker pkg.GroupLooker) h
 			return
 		}
 
-		res := struct {
-			GID string  `json:"gid"`
-			TTL float64 `json:"ttl"`
-		}{gid, ttl.Seconds()}
+		res := returnType{gid, ttl.Seconds()}
 		logger.Info("ttl retrieved", zap.String("gid", gid), zap.Float64("ttl", res.TTL))
 		json.NewEncoder(w).Encode(res)
 	})
 }
 
 // UpdateUsersInGroups allows to trigger a refresh of users belonfing to a group
-func UpdateUsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker, maxConcurrency int) http.Handler {
+func UpdateUsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker, maxConcurrency int, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if !groupSearch {
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+
 		type request struct {
 			Groups []string `json:"groups"`
 		}
@@ -316,8 +383,14 @@ func UpdateUsersInGroup(logger *zap.Logger, groupLooker pkg.GroupLooker, maxConc
 }
 
 // UpdateUserGroups allows to trigger a refresh of groups belonfing to an user
-func UpdateUserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker, maxConcurrency int) http.Handler {
+func UpdateUserGroups(logger *zap.Logger, groupLooker pkg.GroupLooker, maxConcurrency int, groupSearch bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if !groupSearch {
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+
 		type request struct {
 			Users []string `json:"users"`
 		}
