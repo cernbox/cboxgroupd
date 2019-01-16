@@ -28,6 +28,7 @@ var (
 var fVersion bool
 
 func init() {
+	viper.SetDefault("network", "localhost")
 	viper.SetDefault("port", 2002)
 	viper.SetDefault("ldaphostname", "xldap.cern.ch")
 	viper.SetDefault("ldapport", 389)
@@ -45,12 +46,13 @@ func init() {
 	viper.AddConfigPath("/etc/cboxgroupd/")
 
 	flag.BoolVar(&fVersion, "version", false, "Show version")
+	flag.String("network", "localhost", "Network to listen for connections")
 	flag.Int("port", 2002, "Port to listen for connections")
 	flag.String("ldaphostname", "xldap.cern.ch", "Hostname of the LDAP server")
 	flag.Int("ldapport", 389, "Port of LDAP server")
 	flag.Uint("ldappagelimit", 1000, "Page limit for paged searchs")
 	flag.String("redishostname", "localhost", "Hostname of the Redis server")
-	flag.String("redispassword", "foo", "Password for the Redis server")
+	flag.String("redispassword", "", "Password for the Redis server")
 	flag.Int("redisport", 6379, "Port of Redis server")
 	flag.Int("redisdb", 0, "Redis number database for keys isolation (0-15)")
 	flag.Int("redisttl", 60, "Number of seconds to expire cached entries in Redis")
@@ -122,7 +124,7 @@ func main() {
 	loggedRouter := gh.LoggingHandler(out, router)
 
 	logger.Info("server is listening", zap.Int("port", viper.GetInt("port")))
-	logger.Warn("server stopped", zap.Error(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("port")), loggedRouter)))
+	logger.Warn("server stopped", zap.Error(http.ListenAndServe(fmt.Sprintf("%s:%d", viper.GetString("network"), viper.GetInt("port")), loggedRouter)))
 }
 
 func getHTTPLoggerOut(filename string) *os.File {
